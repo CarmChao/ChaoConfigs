@@ -38,7 +38,7 @@
     # the top and down respectively.
     # The width can be negative.  In this case the actual width is the
     # screen width minus the width defined in within the geometry option.
-    geometry = "350x5+15+36"
+    geometry = "350x5-10+26"
 
     # Turn on the progess bar
     progress_bar = true
@@ -200,7 +200,7 @@
     min_icon_size = 0
 
     # Scale larger icons down to this size, set to 0 to disable
-    max_icon_size = 64
+    max_icon_size = 32
 
     # Paths to default icons.
     icon_path = /usr/share/icons/Adwaita/96x96/status:/usr/share/icons/Adwaita/96x96/emblems:/usr/share/icons/breeze/emblems/24:/usr/share/icons/breeze/status/24

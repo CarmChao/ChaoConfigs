@@ -209,7 +209,7 @@ font pango:DejaVu Sans Mono 9
 bindsym --release Print exec flameshot gui
 
 # Auto start picom (Xorg compositor)
-exec picom --unredir-if-possible
+exec picom --unredir-if-possible --vsync
 
 # Auto start nitrogen (wallpaper engine)
 exec nitrogen --restore

@@ -43,3 +43,4 @@ do
   rsync -avPh $mount_dir/$path_prefix/$record_dir/$record $dst_path/$record_dir/ 
   chmod 664 $dst_path/$record_dir/$record 
 done
+notify-send "Download Finished!"

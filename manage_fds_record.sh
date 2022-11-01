@@ -31,23 +31,25 @@ path_prefix="car/eng/bhx/0003"
 
 dst_path="/media/chao/Data/bag/data-input/car/eng/bhx/0003"
 #dst_path="/media/chao/Data/bag/data-input/car/eng/bmk/0005"
+record_prefix="record"
+traget_dir=""
+target_record=""
 
 function parse_arguments() {
-	
 	while [ $# -gt 0 ] ; do
     local opt="$1"; shift
     case "${opt}" in
       -h|--help)
         show_usage
-        exit 1
+        exit 0
         ;;
       -s|--search)
         search_record "$@"
-        exit 1
+        exit 0
         ;;
       -d|--download)
         download_record "$@"
-        exit 1
+        exit 0
         ;;
       *)
         warning "Unknow option: ${opt}"
@@ -56,6 +58,13 @@ function parse_arguments() {
         ;;
     esac
   done
+}
+
+function show_usage() {
+  echo "Usage:"
+  echo "  -h|--help: show usage"
+  echo "  -s|--search search_date: search record/dir in specify date"
+  echo "  -d|--download dir [record.1 record.2 ...]: download specify record"
 }
 
 function parse_dir_name2time(){
@@ -70,30 +79,98 @@ function parse_dir_name2time(){
 }
 
 function search_record() {
-  echo "date --date='$@' "+%Y %m %d %H %M %S""
+  #echo "date --date='$@' "+%Y %m %d %H %M %S""
   read -r y m d H M S <<< "$(date "+%Y %m %d %H %M %S" --date="$*")"
-  for var in y m d H M S; do echo "$var=${!var}"; done
+
+  dirs=($(ls "$mount_dir/$path_prefix/$y-$m-$d"))
+  echo "dirs in $y-$m-$d:"
+  for dir in ${dirs[@]}; do echo "$dir"; done
 
   search_seconds=$(($H*3600+$M*60+$S))
-  echo $search_seconds
-  dirs=($(ls "$mount_dir/$path_prefix/$y-$m-$d"))
-  echo "dir: ${dirs[1]}"
+  #echo $search_seconds
+  if [[ $search_seconds == "0" ]];then
+    exit 0
+  fi
+
   dir=""
+  start_seconds=""
   for temp_dir in ${dirs[@]}; do
     seconds=$(parse_dir_name2time $temp_dir)
-    echo "$temp_dir seconds: $seconds"
+    #echo "$temp_dir seconds: $seconds"
     if [[ $search_seconds -lt $seconds ]];then
       break 
     else
       dir=$temp_dir
+      start_seconds=$seconds
     fi
   done
   if [[ $dir == "" ]];then 
     error "no dir contain time: $*"
     exit -1
   fi
-  echo $dir
+  record_idx=$(((search_seconds-start_seconds)/30))
+  printf -v record_idx "%05g" $record_idx
+  record_name="$record_prefix.$record_idx"
+  echo "$y-$m-$d/$dir ${record_name}"
   exit 1
 }
 
+function download_record() {
+  if [ $# -lt 1 ]; then
+    warning "Usage: ./download_record.sh dir [record.1 record.2 ...]"
+    exit -1
+  fi
+
+  if [ ! -d $mount_dir/$path_prefix ]; then
+    error "make sure fds is mounted"
+    exit -1
+  fi
+
+  if [ ! -d $dst_path ]; then
+    error "$dst_path is not exit"
+    exit -1
+  fi
+
+  record_dir=$1
+
+  shift 1
+
+  if [ $# == 0 ]
+  then
+    if [ ! -d $dst_path/$record_dir ]; then
+      info "mkdir $dst_path/$record_dir"
+      mkdir -p $dst_path/$record_dir
+    fi
+    info "download whole dir: $mount_dir/$path_prefix/$record_dir to $dst_path/$record_dir"
+    rsync -ravPh $mount_dir/$path_prefix/$record_dir $dst_path
+    chmod -R 774 $dst_path/$record_dir
+    chmod 664 $dst_path/$record_dir/*
+    notify-send -a record_downloader "Download $record_dir finished"
+  else
+    for record in $@
+    do
+      record_path=$record_dir/$record
+      if [ ! -f $mount_dir/$path_prefix/$record_path ]; then
+        warning "can not find record: $mount_dir/$path_prefix/$record_path"
+        continue
+      fi
+
+      if [ ! -d $dst_path/$record_dir ]; then
+        info "mkdir $dst_path/$record_dir"
+        mkdir -p $dst_path/$record_dir
+      fi
+
+      info "cp $mount_dir/$path_prefix/$record_dir/$record $dst_path/$record_dir/$record"
+      rsync -avPh $mount_dir/$path_prefix/$record_dir/$record $dst_path/$record_dir/
+      chmod 664 $dst_path/$record_dir/$record
+      notify-send -a record_downloader "Download $record_dir/$record finished"
+    done
+  fi
+}
+
+if [[ $# -eq 0 ]];then
+  show_usage
+  exit 1
+fi
 parse_arguments $@
+
